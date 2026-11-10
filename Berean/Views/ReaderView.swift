@@ -1,19 +1,99 @@
 import SwiftUI
 
 struct ReaderView: View {
-        let book: Book
-        let chapter: Chapter
+    @Environment(BibleStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var systemTypeSize
+    @AppStorage("readerSizeStep") private var sizeStep = 0
+    @State private var position: Position
 
-        var body: some View {
-                ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 10) {
-                                ForEach(chapter.verses, id: \.verse) { verse in
-                                        Text("\(verse.verse)  \(verse.text)")
-                                }
-                        }
-                        .padding()
+    private let sizeStepRange = -3...6
+
+    init(position: Position) {
+        _position = State(initialValue: position)
+    }
+
+    private var book: Book? { store.bible?.book(id: position.bookID) }
+    private var chapter: Chapter? { book?.chapter(position.chapter) }
+    private var previous: Position? { store.bible?.position(before: position) }
+    private var next: Position? { store.bible?.position(after: position) }
+
+    private var title: String {
+        book.map { "\($0.name) \(position.chapter)" } ?? ""
+    }
+
+    private var textSize: DynamicTypeSize {
+        let sizes = DynamicTypeSize.allCases
+        let base = sizes.firstIndex(of: systemTypeSize) ?? 0
+        return sizes[min(max(base + sizeStep, 0), sizes.count - 1)]
+    }
+
+    var body: some View {
+        ScrollView {
+            if let chapter {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ForEach(chapter.verses, id: \.verse) { verse in
+                        verseText(verse)
+                    }
                 }
-                .navigationTitle("\(book.name) \(chapter.chapter)")
-                .navigationBarTitleDisplayMode(.inline)
+                .padding()
+            }
         }
+        .id(position)
+        .font(.system(.body, design: .serif))
+        .lineSpacing(6)
+        .dynamicTypeSize(textSize)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    sizeStep = max(sizeStep - 1, sizeStepRange.lowerBound)
+                } label: {
+                    Label("Diminuir texto", systemImage: "textformat.size.smaller")
+                }
+                Button {
+                    sizeStep = min(sizeStep + 1, sizeStepRange.upperBound)
+                } label: {
+                    Label("Aumentar texto", systemImage: "textformat.size.larger")
+                }
+            }
+            ToolbarItemGroup(placement: .bottomBar) {
+                Button { go(to: previous) } label: {
+                    Label("Capítulo anterior", systemImage: "chevron.left")
+                }
+                .disabled(previous == nil)
+                Spacer()
+                Button { go(to: next) } label: {
+                    Label("Próximo capítulo", systemImage: "chevron.right")
+                }
+                .disabled(next == nil)
+            }
+        }
+        .simultaneousGesture(swipe)
+        .onAppear { store.remember(position) }
+        .onChange(of: position) { _, newValue in store.remember(newValue) }
+    }
+
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 40)
+            .onEnded { value in
+                guard value.startLocation.x > 24,
+                      abs(value.translation.width) > abs(value.translation.height) * 2
+                else { return }
+                go(to: value.translation.width < 0 ? next : previous)
+            }
+    }
+
+    private func go(to target: Position?) {
+        guard let target else { return }
+        position = target
+    }
+
+    private func verseText(_ verse: Verse) -> Text {
+        let number = Text("\(verse.verse)")
+            .font(.system(.caption2, design: .serif).weight(.semibold))
+            .foregroundStyle(.secondary)
+            .baselineOffset(6)
+        return Text("\(number) \(verse.text)")
+    }
 }
