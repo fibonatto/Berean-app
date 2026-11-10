@@ -6,3 +6,5 @@ nonisolated struct VerseRoute: Hashable {
     let position: Position
     let verses: ClosedRange<Int>
 }
+
+nonisolated struct SearchRoute: Hashable {}

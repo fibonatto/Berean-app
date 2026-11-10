@@ -24,7 +24,12 @@ struct ContentView: View {
             .background(Theme.paper)
             .navigationTitle("Bíblia")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { TranslationMenu() }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink(value: SearchRoute()) {
+                        Label("Buscar no texto", systemImage: "magnifyingglass")
+                    }
+                    TranslationMenu()
+                }
             }
             .searchable(text: $query, isPresented: $isSearching, prompt: "Ir para… ex.: pv 1:1")
             .searchSuggestions {
@@ -47,6 +52,9 @@ struct ContentView: View {
             }
             .navigationDestination(for: VerseRoute.self) { route in
                 ReaderView(position: route.position, highlight: route.verses)
+            }
+            .navigationDestination(for: SearchRoute.self) { _ in
+                SearchView(onSelect: openHit)
             }
         }
         .task {
@@ -77,6 +85,14 @@ struct ContentView: View {
         }
     }
 
+    private func openHit(_ hit: SearchHit) {
+        Task {
+            await store.select(hit.translation)
+            let position = Position(bookKey: hit.bookKey, chapter: hit.chapter)
+            path.append(VerseRoute(position: position, verses: hit.verse...hit.verse))
+        }
+    }
+
     private func restoreLastPosition() {
         guard let last = store.lastPosition,
               store.bible?.book(key: last.bookKey)?.chapter(last.chapter) != nil
@@ -89,4 +105,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environment(BibleStore())
+        .environment(SearchModel())
 }
