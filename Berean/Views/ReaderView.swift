@@ -29,17 +29,23 @@ struct ReaderView: View {
 
     var body: some View {
         ScrollView {
-            if let chapter {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(chapter.verses, id: \.verse) { verse in
-                        verseText(verse)
+            if let book, let chapter {
+                VStack(spacing: 0) {
+                    chapterHeader(book: book)
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        ForEach(chapter.verses, id: \.verse) { verse in
+                            verseText(verse)
+                        }
                     }
                 }
-                .padding()
+                .padding(.horizontal, 24)
+                .padding(.bottom, 32)
             }
         }
         .id(position)
-        .font(.system(.body, design: .serif))
+        .background(Theme.paper)
+        .font(Theme.serif(.body))
+        .foregroundStyle(Theme.ink)
         .lineSpacing(6)
         .dynamicTypeSize(textSize)
         .navigationTitle(title)
@@ -89,10 +95,28 @@ struct ReaderView: View {
         position = target
     }
 
+    private func chapterHeader(book: Book) -> some View {
+        VStack(spacing: 8) {
+            Text(book.name.uppercased())
+                .font(Theme.serif(.footnote, weight: .semibold))
+                .tracking(2)
+                .foregroundStyle(Theme.inkSoft)
+            Text("\(position.chapter)")
+                .font(Theme.serif(.largeTitle))
+                .foregroundStyle(Theme.ornament)
+            Rectangle()
+                .fill(Theme.border)
+                .frame(width: 40, height: 1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 24)
+        .padding(.bottom, 28)
+    }
+
     private func verseText(_ verse: Verse) -> Text {
         let number = Text("\(verse.verse)")
-            .font(.system(.caption2, design: .serif).weight(.semibold))
-            .foregroundStyle(.secondary)
+            .font(Theme.serif(.caption2, weight: .semibold))
+            .foregroundStyle(Theme.verseNumber)
             .baselineOffset(6)
         return Text("\(number) \(verse.text)")
     }

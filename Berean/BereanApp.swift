@@ -9,12 +9,18 @@ import SwiftUI
 
 @main
 struct BereanApp: App {
-        @State private var store = BibleStore()
+    @State private var store = BibleStore()
 
-        var body: some Scene {
-                WindowGroup {
-                        ContentView()
-                                .environment(store)
-                }
+    init() {
+        Theme.configureNavigationBar()
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environment(store)
+                .tint(Theme.accent)
+                .preferredColorScheme(.light)
         }
+    }
 }

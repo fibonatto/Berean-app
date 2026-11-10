@@ -19,6 +19,7 @@ struct ContentView: View {
                     ProgressView()
                 }
             }
+            .background(Theme.paper)
             .navigationTitle(store.translation.title)
             .navigationDestination(for: BookRoute.self) { route in
                 if let book = store.bible?.book(id: route.bookID) {
