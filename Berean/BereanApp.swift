@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct BereanApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
+        @State private var store = BibleStore()
+
+        var body: some Scene {
+                WindowGroup {
+                        ContentView()
+                                .environment(store)
+                }
         }
-    }
 }
