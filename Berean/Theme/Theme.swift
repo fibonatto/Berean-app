@@ -20,6 +20,7 @@ enum Theme {
     static let accent = Color(hex: 0x2C67B3)
     static let verseNumber = Color(hex: 0x9A6138)
     static let ornament = Color(hex: 0xD15A4D)
+    static let highlight = Color(hex: 0xD6E5F8)
 
     static func serif(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
         .system(style, design: .serif, weight: weight)

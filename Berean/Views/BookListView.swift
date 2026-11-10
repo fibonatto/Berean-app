@@ -22,7 +22,7 @@ struct BookListView: View {
 
     private func rows(_ books: [Book]) -> some View {
         ForEach(books) { book in
-            NavigationLink(value: BookRoute(bookID: book.id)) {
+            NavigationLink(value: BookRoute(bookKey: book.key)) {
                 Text(book.name)
                     .font(Theme.serif(.body))
                     .foregroundStyle(Theme.ink)

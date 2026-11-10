@@ -13,6 +13,9 @@ nonisolated enum BibleLoader {
             throw BibleLoaderError.fileNotFound(translation.fileName)
         }
         let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(Bible.self, from: data)
+        let bible = try JSONDecoder().decode(Bible.self, from: data)
+        let unmapped = bible.books.map(\.key).filter { Canon.rank(of: $0) == nil }
+        assert(unmapped.isEmpty, "Unmapped book ids in \(translation.fileName): \(unmapped)")
+        return bible
     }
 }

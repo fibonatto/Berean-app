@@ -1,3 +1,8 @@
 nonisolated struct BookRoute: Hashable {
-        let bookID: String
+    let bookKey: String
+}
+
+nonisolated struct VerseRoute: Hashable {
+    let position: Position
+    let verses: ClosedRange<Int>
 }

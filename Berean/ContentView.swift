@@ -3,6 +3,8 @@ import SwiftUI
 struct ContentView: View {
     @Environment(BibleStore.self) private var store
     @State private var path = NavigationPath()
+    @State private var query = ""
+    @State private var isSearching = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -20,14 +22,31 @@ struct ContentView: View {
                 }
             }
             .background(Theme.paper)
-            .navigationTitle(store.translation.title)
-            .navigationDestination(for: BookRoute.self) { route in
-                if let book = store.bible?.book(id: route.bookID) {
-                    ChapterGridView(book: book)
+            .navigationTitle("Bíblia")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { TranslationMenu() }
+            }
+            .searchable(text: $query, isPresented: $isSearching, prompt: "Ir para… ex.: pv 1:1")
+            .searchSuggestions {
+                ForEach(suggestions, id: \.self) { reference in
+                    Button { open(reference) } label: {
+                        Text(title(of: reference)).font(Theme.serif(.body))
+                    }
                 }
+            }
+            .onSubmit(of: .search) {
+                if let first = suggestions.first { open(first) }
+            }
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .navigationDestination(for: BookRoute.self) { route in
+                ChapterGridView(bookKey: route.bookKey)
             }
             .navigationDestination(for: Position.self) { position in
                 ReaderView(position: position)
+            }
+            .navigationDestination(for: VerseRoute.self) { route in
+                ReaderView(position: route.position, highlight: route.verses)
             }
         }
         .task {
@@ -36,11 +55,33 @@ struct ContentView: View {
         }
     }
 
+    private var suggestions: [Reference] {
+        Array(store.references(matching: query).prefix(8))
+    }
+
+    private func title(of reference: Reference) -> String {
+        store.bible.map { reference.title(in: $0) } ?? ""
+    }
+
+    private func open(_ reference: Reference) {
+        query = ""
+        isSearching = false
+        path.append(BookRoute(bookKey: reference.bookKey))
+        guard let chapter = reference.chapter else { return }
+        let position = Position(bookKey: reference.bookKey, chapter: chapter)
+        if let verse = reference.verse {
+            let last = max(verse, reference.endVerse ?? verse)
+            path.append(VerseRoute(position: position, verses: verse...last))
+        } else {
+            path.append(position)
+        }
+    }
+
     private func restoreLastPosition() {
         guard let last = store.lastPosition,
-              store.bible?.book(id: last.bookID)?.chapter(last.chapter) != nil
+              store.bible?.book(key: last.bookKey)?.chapter(last.chapter) != nil
         else { return }
-        path.append(BookRoute(bookID: last.bookID))
+        path.append(BookRoute(bookKey: last.bookKey))
         path.append(last)
     }
 }
