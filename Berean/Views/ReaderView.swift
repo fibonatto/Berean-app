@@ -1,13 +1,23 @@
+import SwiftData
 import SwiftUI
+import UIKit
 
 struct ReaderView: View {
     @Environment(BibleStore.self) private var store
+    @Environment(\.modelContext) private var context
     @Environment(\.dynamicTypeSize) private var systemTypeSize
     @AppStorage("readerSizeStep") private var sizeStep = 0
+    @AppStorage("readerFont") private var readerFont = ReaderFont.newYork
+    @AppStorage("readerSpacing") private var spacing = ReaderSpacing.normal
+    @AppStorage("readerMargin") private var margin = ReaderMargin.normal
+    @Query private var marks: [VerseMark]
     @State private var position: Position
     @State private var highlight: ClosedRange<Int>?
+    @State private var selected: Set<Int> = []
+    @State private var showsCopied = false
+    @State private var showsSettings = false
 
-    private let sizeStepRange = -3...6
+    private let rowShape = RoundedRectangle(cornerRadius: 6)
 
     init(position: Position, highlight: ClosedRange<Int>? = nil) {
         _position = State(initialValue: position)
@@ -23,10 +33,27 @@ struct ReaderView: View {
         book.map { "\($0.name) \(position.chapter)" } ?? ""
     }
 
-    private var textSize: DynamicTypeSize {
-        let sizes = DynamicTypeSize.allCases
-        let base = sizes.firstIndex(of: systemTypeSize) ?? 0
-        return sizes[min(max(base + sizeStep, 0), sizes.count - 1)]
+    private var chapterMarks: [Int: VerseMark] {
+        marks
+            .filter { $0.bookKey == position.bookKey && $0.chapter == position.chapter }
+            .reduce(into: [:]) { $0[$1.verse] = $1 }
+    }
+
+    private var allFavorite: Bool {
+        let current = chapterMarks
+        return !selected.isEmpty && selected.allSatisfy { current[$0]?.isFavorite == true }
+    }
+
+    private var selectionText: String? {
+        guard let book, let chapter, !selected.isEmpty else { return nil }
+        let verses = chapter.verses.filter { selected.contains($0.verse) }
+        guard !verses.isEmpty else { return nil }
+        return VerseFormat.quotation(
+            bookName: book.name,
+            chapter: position.chapter,
+            verses: verses,
+            translation: store.translation.title
+        )
     }
 
     var body: some View {
@@ -35,13 +62,9 @@ struct ReaderView: View {
                 if let book, let chapter {
                     VStack(spacing: 0) {
                         chapterHeader(book: book)
-                        LazyVStack(alignment: .leading, spacing: 6) {
-                            ForEach(chapter.verses, id: \.verse) { verse in
-                                verseRow(verse)
-                            }
-                        }
+                        verseList(chapter)
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, margin.points)
                     .padding(.bottom, 32)
                 }
             }
@@ -49,44 +72,107 @@ struct ReaderView: View {
             .task(id: position) { await reveal(with: proxy) }
         }
         .background(Theme.paper)
-        .font(Theme.serif(.body))
+        .font(readerFont.bodyFont)
         .foregroundStyle(Theme.ink)
-        .lineSpacing(6)
-        .dynamicTypeSize(textSize)
+        .lineSpacing(spacing.points)
+        .dynamicTypeSize(ReaderStyle.textSize(system: systemTypeSize, step: sizeStep))
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button {
-                    sizeStep = max(sizeStep - 1, sizeStepRange.lowerBound)
-                } label: {
-                    Label("Diminuir texto", systemImage: "textformat.size.smaller")
-                }
-                Button {
-                    sizeStep = min(sizeStep + 1, sizeStepRange.upperBound)
-                } label: {
-                    Label("Aumentar texto", systemImage: "textformat.size.larger")
-                }
-            }
-            ToolbarItemGroup(placement: .bottomBar) {
-                Button { go(to: previous) } label: {
-                    Label("Capítulo anterior", systemImage: "chevron.left")
-                }
-                .disabled(previous == nil)
-                Spacer()
-                TranslationMenu()
-                Spacer()
-                Button { go(to: next) } label: {
-                    Label("Próximo capítulo", systemImage: "chevron.right")
-                }
-                .disabled(next == nil)
-            }
+        .toolbar { toolbarContent }
+        .overlay(alignment: .bottom) { copiedToast }
+        .animation(.easeInOut(duration: 0.2), value: showsCopied)
+        .sensoryFeedback(.selection, trigger: selected)
+        .sensoryFeedback(.success, trigger: showsCopied) { _, isShown in isShown }
+        .sheet(isPresented: $showsSettings) {
+            ReaderSettingsView(sample: chapter?.verses.first?.text ?? "")
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Theme.paper)
         }
         .simultaneousGesture(swipe)
         .onAppear { store.remember(position) }
         .onChange(of: position) { _, newValue in store.remember(newValue) }
         .onChange(of: store.lastPosition) { _, newValue in
             if let newValue, newValue != position { go(to: newValue) }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if selected.isEmpty {
+                Button { showsSettings = true } label: {
+                    Label("Ajustes de leitura", systemImage: "textformat.size")
+                }
+            } else {
+                Button { selected = [] } label: {
+                    Label("Limpar seleção", systemImage: "xmark")
+                }
+            }
+        }
+        ToolbarItemGroup(placement: .bottomBar) {
+            if selected.isEmpty {
+                navigationButtons
+            } else {
+                selectionButtons
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var navigationButtons: some View {
+        Button { go(to: previous) } label: {
+            Label("Capítulo anterior", systemImage: "chevron.left")
+        }
+        .disabled(previous == nil)
+        Spacer()
+        TranslationMenu()
+        Spacer()
+        Button { go(to: next) } label: {
+            Label("Próximo capítulo", systemImage: "chevron.right")
+        }
+        .disabled(next == nil)
+    }
+
+    @ViewBuilder
+    private var selectionButtons: some View {
+        ForEach(MarkColor.allCases) { color in
+            Button { applyHighlight(color) } label: {
+                Circle()
+                    .fill(color.color)
+                    .overlay { Circle().stroke(Theme.border, lineWidth: 1) }
+                    .frame(width: 24, height: 24)
+            }
+            .accessibilityLabel("Destacar em \(color.title.lowercased())")
+        }
+        Button { applyHighlight(nil) } label: {
+            Label("Remover destaque", systemImage: "circle.slash")
+        }
+        Spacer()
+        Button { toggleFavorite() } label: {
+            Label("Favoritar", systemImage: allFavorite ? "star.fill" : "star")
+        }
+        Button { copySelection() } label: {
+            Label("Copiar", systemImage: "doc.on.doc")
+        }
+        if let text = selectionText {
+            ShareLink(item: text) {
+                Label("Compartilhar", systemImage: "square.and.arrow.up")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var copiedToast: some View {
+        if showsCopied {
+            Text("Copiado")
+                .font(Theme.serif(.footnote, weight: .semibold))
+                .foregroundStyle(Theme.paper)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Theme.ink, in: Capsule())
+                .padding(.bottom, 16)
+                .transition(.opacity)
         }
     }
 
@@ -103,6 +189,7 @@ struct ReaderView: View {
     private func go(to target: Position?) {
         guard let target else { return }
         highlight = nil
+        selected = []
         position = target
     }
 
@@ -110,6 +197,55 @@ struct ReaderView: View {
         guard let first = highlight?.lowerBound else { return }
         try? await Task.sleep(for: .milliseconds(150))
         proxy.scrollTo(first, anchor: UnitPoint(x: 0.5, y: 0.25))
+    }
+
+    private func toggle(_ verse: Int) {
+        if selected.contains(verse) {
+            selected.remove(verse)
+        } else {
+            selected.insert(verse)
+        }
+    }
+
+    private func applyHighlight(_ color: MarkColor?) {
+        update(selected) { $0.highlight = color?.rawValue }
+        selected = []
+    }
+
+    private func toggleFavorite() {
+        let makeFavorite = !allFavorite
+        update(selected) { $0.isFavorite = makeFavorite }
+        selected = []
+    }
+
+    private func update(_ verses: Set<Int>, change: (VerseMark) -> Void) {
+        let existing = chapterMarks
+        for verse in verses {
+            let stored = existing[verse]
+            let mark = stored ?? VerseMark(
+                bookKey: position.bookKey,
+                chapter: position.chapter,
+                verse: verse
+            )
+            change(mark)
+            if mark.highlight == nil, !mark.isFavorite {
+                if stored != nil { context.delete(mark) }
+            } else if stored == nil {
+                context.insert(mark)
+            }
+        }
+        try? context.save()
+    }
+
+    private func copySelection() {
+        guard let text = selectionText else { return }
+        UIPasteboard.general.string = text
+        selected = []
+        showsCopied = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.4))
+            showsCopied = false
+        }
     }
 
     private func chapterHeader(book: Book) -> some View {
@@ -130,24 +266,43 @@ struct ReaderView: View {
         .padding(.bottom, 28)
     }
 
-    private func verseRow(_ verse: Verse) -> some View {
-        let isHighlighted = highlight?.contains(verse.verse) ?? false
-        return verseText(verse)
+    private func verseList(_ chapter: Chapter) -> some View {
+        let current = chapterMarks
+        return LazyVStack(alignment: .leading, spacing: 6) {
+            ForEach(chapter.verses, id: \.verse) { verse in
+                verseRow(verse, mark: current[verse.verse])
+            }
+        }
+    }
+
+    private func verseRow(_ verse: Verse, mark: VerseMark?) -> some View {
+        let markColor = mark?.markColor
+        let isTarget = highlight?.contains(verse.verse) == true
+        let fill = markColor?.color ?? (isTarget ? Theme.highlight : Color.clear)
+        return verseText(verse, onMark: markColor != nil, isFavorite: mark?.isFavorite == true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(
-                isHighlighted ? Theme.highlight : Color.clear,
-                in: RoundedRectangle(cornerRadius: 6)
-            )
+            .background(fill, in: rowShape)
+            .overlay {
+                if selected.contains(verse.verse) {
+                    rowShape.stroke(Theme.accent, lineWidth: 1.5)
+                }
+            }
+            .contentShape(rowShape)
+            .onTapGesture { toggle(verse.verse) }
             .id(verse.verse)
     }
 
-    private func verseText(_ verse: Verse) -> Text {
+    private func verseText(_ verse: Verse, onMark: Bool, isFavorite: Bool) -> Text {
         let number = Text("\(verse.verse)")
             .font(Theme.serif(.caption2, weight: .semibold))
-            .foregroundStyle(Theme.verseNumber)
+            .foregroundStyle(onMark ? Theme.verseNumberOnMark : Theme.verseNumber)
             .baselineOffset(6)
-        return Text("\(number) \(verse.text)")
+        guard isFavorite else { return Text("\(number) \(verse.text)") }
+        let star = Text(Image(systemName: "star.fill"))
+            .font(.caption2)
+            .foregroundStyle(Theme.star)
+        return Text("\(number) \(verse.text) \(star)")
     }
 }

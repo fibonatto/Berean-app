@@ -8,3 +8,5 @@ nonisolated struct VerseRoute: Hashable {
 }
 
 nonisolated struct SearchRoute: Hashable {}
+
+nonisolated struct MarksRoute: Hashable {}

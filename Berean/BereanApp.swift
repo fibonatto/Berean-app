@@ -5,6 +5,7 @@
 //  Created by Sergio Bonatto on 09/11/26.
 //
 
+import SwiftData
 import SwiftUI
 
 @main
@@ -24,5 +25,6 @@ struct BereanApp: App {
                 .tint(Theme.accent)
                 .preferredColorScheme(.light)
         }
+        .modelContainer(for: VerseMark.self)
     }
 }

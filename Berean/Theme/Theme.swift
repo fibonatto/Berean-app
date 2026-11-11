@@ -21,6 +21,11 @@ enum Theme {
     static let verseNumber = Color(hex: 0x9A6138)
     static let ornament = Color(hex: 0xD15A4D)
     static let highlight = Color(hex: 0xD6E5F8)
+    static let verseNumberOnMark = Color(hex: 0x7E4A28)
+    static let star = Color(hex: 0x9E3526)
+    static let markYellow = Color(hex: 0xF2E6B0)
+    static let markGreen = Color(hex: 0xD6E8C4)
+    static let markRose = Color(hex: 0xF5CFC8)
 
     static func serif(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
         .system(style, design: .serif, weight: weight)
@@ -43,5 +48,15 @@ enum Theme {
         let base = UIFont.systemFont(ofSize: size, weight: weight)
         guard let descriptor = base.fontDescriptor.withDesign(.serif) else { return base }
         return UIFont(descriptor: descriptor, size: size)
+    }
+}
+
+extension MarkColor {
+    var color: Color {
+        switch self {
+        case .yellow: Theme.markYellow
+        case .green: Theme.markGreen
+        case .rose: Theme.markRose
+        }
     }
 }

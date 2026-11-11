@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct ContentView: View {
@@ -24,6 +25,11 @@ struct ContentView: View {
             .background(Theme.paper)
             .navigationTitle("Bíblia")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink(value: MarksRoute()) {
+                        Label("Favoritos e destaques", systemImage: "bookmark")
+                    }
+                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     NavigationLink(value: SearchRoute()) {
                         Label("Buscar no texto", systemImage: "magnifyingglass")
@@ -55,6 +61,9 @@ struct ContentView: View {
             }
             .navigationDestination(for: SearchRoute.self) { _ in
                 SearchView(onSelect: openHit)
+            }
+            .navigationDestination(for: MarksRoute.self) { _ in
+                MarksView(onSelect: openMark)
             }
         }
         .task {
@@ -93,6 +102,11 @@ struct ContentView: View {
         }
     }
 
+    private func openMark(_ mark: VerseMark) {
+        let position = Position(bookKey: mark.bookKey, chapter: mark.chapter)
+        path.append(VerseRoute(position: position, verses: mark.verse...mark.verse))
+    }
+
     private func restoreLastPosition() {
         guard let last = store.lastPosition,
               store.bible?.book(key: last.bookKey)?.chapter(last.chapter) != nil
@@ -106,4 +120,5 @@ struct ContentView: View {
     ContentView()
         .environment(BibleStore())
         .environment(SearchModel())
+        .modelContainer(for: VerseMark.self, inMemory: true)
 }
