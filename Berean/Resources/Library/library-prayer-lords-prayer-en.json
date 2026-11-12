@@ -1,0 +1,45 @@
+{
+  "id": "lords-prayer",
+  "kind": "prayer",
+  "language": "en",
+  "order": 1,
+  "title": "The Lord’s Prayer",
+  "subtitle": "Traditional form, with the doxology",
+  "tradition": "ecumenical",
+  "source": "The Book of Common Prayer (1662); Matthew 6:9–13",
+  "license": "Public domain (traditional text)",
+  "sections": [
+    {
+      "blocks": [
+        {
+          "type": "verse",
+          "lines": [
+            "Our Father, which art in heaven,",
+            "Hallowed be thy name;",
+            "Thy kingdom come;",
+            "Thy will be done in earth,",
+            "As it is in heaven."
+          ]
+        },
+        {
+          "type": "verse",
+          "lines": [
+            "Give us this day our daily bread.",
+            "And forgive us our trespasses,",
+            "As we forgive them that trespass against us.",
+            "And lead us not into temptation,",
+            "But deliver us from evil."
+          ]
+        },
+        {
+          "type": "verse",
+          "lines": [
+            "For thine is the kingdom, and the power, and the glory,",
+            "For ever and ever.",
+            "Amen."
+          ]
+        }
+      ]
+    }
+  ]
+}

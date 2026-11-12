@@ -42,6 +42,7 @@ final class BibleStore {
             bible = loaded
             resolver = ReferenceResolver(bible: loaded)
             reconcilePosition(with: loaded)
+            WidgetSync.update(store: self)
         } catch {
             guard self.translation == translation else { return }
             bible = nil
@@ -54,6 +55,7 @@ final class BibleStore {
     func remember(_ position: Position) {
         lastPosition = position
         UserDefaults.standard.set(try? JSONEncoder().encode(position), forKey: Key.position)
+        WidgetSync.updateReading(store: self)
     }
 
     func references(matching input: String) -> [Reference] {

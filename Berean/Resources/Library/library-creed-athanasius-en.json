@@ -1,0 +1,218 @@
+{
+  "id": "athanasian-creed",
+  "kind": "creed",
+  "language": "pt",
+  "order": 3,
+  "title": "Credo de Atanásio",
+  "subtitle": "Os 40 artigos do Credo de Atanásio",
+  "tradition": "reformed",
+  "source": "Credo de Atanásio, tradução portuguesa",
+  "license": "Domínio público",
+  "sections": [
+    {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Todo aquele que quiser ser salvo, é necessário acima de tudo, que sustente a fé universal.",
+          "number": "1"
+        },
+        {
+          "type": "paragraph",
+          "text": "A qual, a menos que cada um preserve perfeita e inviolável, certamente perecerá para sempre.",
+          "number": "2"
+        },
+        {
+          "type": "paragraph",
+          "text": "Mas a fé universal é esta, que adoremos um único Deus em Trindade, e a Trindade em unidade.",
+          "number": "3"
+        },
+        {
+          "type": "paragraph",
+          "text": "Não confundindo as pessoas, nem dividindo a substância.",
+          "number": "4"
+        },
+        {
+          "type": "paragraph",
+          "text": "Porque a pessoa do Pai é uma, a do Filho é outra, e a do Espírito Santo outra.",
+          "number": "5"
+        },
+        {
+          "type": "paragraph",
+          "text": "Mas no Pai, no Filho e no Espírito Santo há uma mesma divindade, igual em glória e co-eterna majestade.",
+          "number": "6"
+        },
+        {
+          "type": "paragraph",
+          "text": "O que o Pai é, o mesmo é o Filho, e o Espírito Santo.",
+          "number": "7"
+        },
+        {
+          "type": "paragraph",
+          "text": "O Pai é não criado, o Filho é não criado, o Espírito Santo é não criado.",
+          "number": "8"
+        },
+        {
+          "type": "paragraph",
+          "text": "O Pai é ilimitado, o Filho é ilimitado, o Espírito Santo é ilimitado.",
+          "number": "9"
+        },
+        {
+          "type": "paragraph",
+          "text": "O Pai é eterno, o Filho é eterno, o Espírito Santo é eterno.",
+          "number": "10"
+        },
+        {
+          "type": "paragraph",
+          "text": "Contudo, não há três eternos, mas um eterno.",
+          "number": "11"
+        },
+        {
+          "type": "paragraph",
+          "text": "Portanto não há três (seres) não criados, nem três ilimitados, mas um não criado e um ilimitado.",
+          "number": "12"
+        },
+        {
+          "type": "paragraph",
+          "text": "Do mesmo modo, o Pai é onipotente, o Filho é onipotente, o Espírito Santo é onipotente.",
+          "number": "13"
+        },
+        {
+          "type": "paragraph",
+          "text": "Contudo, não há três onipotentes, mas um só onipotente.",
+          "number": "14"
+        },
+        {
+          "type": "paragraph",
+          "text": "Assim, o Pai é Deus, o Filho é Deus, o Espírito Santo é Deus.",
+          "number": "15"
+        },
+        {
+          "type": "paragraph",
+          "text": "Contudo, não há três Deuses, mas um só Deus.",
+          "number": "16"
+        },
+        {
+          "type": "paragraph",
+          "text": "Portanto o Pai é Senhor, o Filho é Senhor, e o Espírito Santo é Senhor.",
+          "number": "17"
+        },
+        {
+          "type": "paragraph",
+          "text": "Contudo, não há três Senhores, mas um só Senhor.",
+          "number": "18"
+        },
+        {
+          "type": "paragraph",
+          "text": "Porque, assim como compelidos pela verdade cristã a confessar cada pessoa separadamente como Deus e Senhor; assim também somos proibidos pela religião universal de dizer que há três Deuses ou Senhores.",
+          "number": "19"
+        },
+        {
+          "type": "paragraph",
+          "text": "O Pai não foi feito de ninguém, nem criado, nem gerado.",
+          "number": "20"
+        },
+        {
+          "type": "paragraph",
+          "text": "O Filho procede do Pai somente, nem feito, nem criado, mas gerado.",
+          "number": "21"
+        },
+        {
+          "type": "paragraph",
+          "text": "O Espírito Santo procede do Pai e do Filho, não feito, nem criado, nem gerado, mas procedente.",
+          "number": "22"
+        },
+        {
+          "type": "paragraph",
+          "text": "Portanto, há um só Pai, não três Pais, um Filho, não três Filhos, um Espírito Santo, não três Espíritos Santos.",
+          "number": "23"
+        },
+        {
+          "type": "paragraph",
+          "text": "E nessa Trindade nenhum é primeiro ou último, nenhum é maior ou menor.",
+          "number": "24"
+        },
+        {
+          "type": "paragraph",
+          "text": "Mas todas as três pessoas co-eternas são co-iguais entre si; de modo que em tudo o que foi dito acima, tanto a unidade em trindade, como a trindade em unidade deve ser cultuada.",
+          "number": "25"
+        },
+        {
+          "type": "paragraph",
+          "text": "Logo, todo aquele que quiser ser salvo deve pensar desse modo com relação à Trindade.",
+          "number": "26"
+        },
+        {
+          "type": "paragraph",
+          "text": "Mas também é necessário para a salvação eterna, que se creia fielmente na encarnação do nosso Senhor Jesus Cristo.",
+          "number": "27"
+        },
+        {
+          "type": "paragraph",
+          "text": "É, portanto, fé verdadeira, que creiamos e confessemos que nosso Senhor e Salvador Jesus Cristo é tanto Deus como homem.",
+          "number": "28"
+        },
+        {
+          "type": "paragraph",
+          "text": "Ele é Deus eternamente gerado da substância do Pai; homem nascido no tempo da substância da sua mãe.",
+          "number": "29"
+        },
+        {
+          "type": "paragraph",
+          "text": "Perfeito Deus, perfeito homem, subsistindo de uma alma racional e carne humana.",
+          "number": "30"
+        },
+        {
+          "type": "paragraph",
+          "text": "Igual ao Pai com relação à sua divindade, menor do que o Pai com relação à sua humanidade.",
+          "number": "31"
+        },
+        {
+          "type": "paragraph",
+          "text": "O qual, embora seja Deus e homem, não é dois mas um só Cristo.",
+          "number": "32"
+        },
+        {
+          "type": "paragraph",
+          "text": "Mas um, não pela conversão da sua divindade em carne, mas por sua divindade haver assumido sua humanidade.",
+          "number": "33"
+        },
+        {
+          "type": "paragraph",
+          "text": "Um, não, de modo algum, pela confusão de substância, mas pela unidade de pessoa.",
+          "number": "34"
+        },
+        {
+          "type": "paragraph",
+          "text": "Pois assim como uma alma racional e carne constituem um só homem, assim Deus e homem constituem um só Cristo.",
+          "number": "35"
+        },
+        {
+          "type": "paragraph",
+          "text": "O qual sofreu por nossa salvação, desceu ao Hades, ressuscitou dos mortos ao terceiro dia.",
+          "number": "36"
+        },
+        {
+          "type": "paragraph",
+          "text": "Ascendeu ao céu, sentou à direita de Deus Pai onipotente, de onde virá para julgar os vivos e os mortos.",
+          "number": "37"
+        },
+        {
+          "type": "paragraph",
+          "text": "Em cuja vinda, todo homem ressuscitará com seus corpos, e prestarão conta de sua obras.",
+          "number": "38"
+        },
+        {
+          "type": "paragraph",
+          "text": "E aqueles que houverem feito o bem irão para a vida eterna; aqueles que houverem feito o mal, para o fogo eterno.",
+          "number": "39"
+        },
+        {
+          "type": "paragraph",
+          "text": "Esta é a fé Universal, a qual a não ser que um homem creia firmemente nela, não pode ser salvo.",
+          "number": "40"
+        }
+      ],
+      "title": "Credo de Atanásio"
+    }
+  ]
+}

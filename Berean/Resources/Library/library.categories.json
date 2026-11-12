@@ -1,0 +1,8 @@
+[
+  { "id": "creed", "title": "Creeds", "singular": "Creed", "order": 1 },
+  { "id": "confession", "title": "Confessions", "singular": "Confession", "order": 2 },
+  { "id": "catechism", "title": "Catechisms", "singular": "Catechism", "order": 3 },
+  { "id": "prayer", "title": "Prayers", "singular": "Prayer", "order": 4 },
+  { "id": "passage", "title": "Scripture Passages", "singular": "Passage", "order": 5 },
+  { "id": "classic", "title": "Classics", "singular": "Classic", "order": 6 }
+]

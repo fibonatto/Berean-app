@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var path = NavigationPath()
     @State private var query = ""
     @State private var isSearching = false
+    @State private var handledDeepLink = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -14,7 +15,7 @@ struct ContentView: View {
                     BookListView(bible: bible)
                 } else if let error = store.error {
                     ContentUnavailableView(
-                        "Não foi possível carregar",
+                        "Could not load",
                         systemImage: "exclamationmark.triangle",
                         description: Text(error)
                     )
@@ -23,21 +24,24 @@ struct ContentView: View {
                 }
             }
             .background(Theme.paper)
-            .navigationTitle("Bíblia")
+            .navigationTitle("Bible")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     NavigationLink(value: MarksRoute()) {
-                        Label("Favoritos e destaques", systemImage: "bookmark")
+                        Label("Favorites and highlights", systemImage: "bookmark")
+                    }
+                    NavigationLink(value: LibraryRoute()) {
+                        Label("Library", systemImage: "books.vertical")
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     NavigationLink(value: SearchRoute()) {
-                        Label("Buscar no texto", systemImage: "magnifyingglass")
+                        Label("Search text", systemImage: "magnifyingglass")
                     }
                     TranslationMenu()
                 }
             }
-            .searchable(text: $query, isPresented: $isSearching, prompt: "Ir para… ex.: pv 1:1")
+            .searchable(text: $query, isPresented: $isSearching, prompt: "Go to… e.g. john 3:16")
             .searchSuggestions {
                 ForEach(suggestions, id: \.self) { reference in
                     Button { open(reference) } label: {
@@ -65,10 +69,22 @@ struct ContentView: View {
             .navigationDestination(for: MarksRoute.self) { _ in
                 MarksView(onSelect: openMark)
             }
+            .navigationDestination(for: LibraryRoute.self) { _ in
+                LibraryView()
+            }
+            .navigationDestination(for: DocumentRoute.self) { route in
+                DocumentView(documentID: route.id, onOpenReference: open)
+            }
+        }
+        .onOpenURL { url in
+            guard let reference = DeepLink.reference(from: url) else { return }
+            handledDeepLink = true
+            path = NavigationPath()
+            open(reference)
         }
         .task {
             await store.load(store.translation)
-            restoreLastPosition()
+            if !handledDeepLink { restoreLastPosition() }
         }
     }
 
@@ -120,5 +136,6 @@ struct ContentView: View {
     ContentView()
         .environment(BibleStore())
         .environment(SearchModel())
+        .environment(LibraryStore())
         .modelContainer(for: VerseMark.self, inMemory: true)
 }

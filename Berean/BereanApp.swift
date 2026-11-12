@@ -12,6 +12,7 @@ import SwiftUI
 struct BereanApp: App {
     @State private var store = BibleStore()
     @State private var search = SearchModel()
+    @State private var library = LibraryStore()
 
     init() {
         Theme.configureNavigationBar()
@@ -22,6 +23,7 @@ struct BereanApp: App {
             ContentView()
                 .environment(store)
                 .environment(search)
+                .environment(library)
                 .tint(Theme.accent)
                 .preferredColorScheme(.light)
         }

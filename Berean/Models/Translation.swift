@@ -4,6 +4,7 @@ nonisolated enum Translation: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
     var title: String { rawValue.uppercased() }
     var fileName: String { "bible-\(rawValue)" }
+    var language: String { self == .kjv ? "en" : "pt" }
 
     var name: String {
         switch self {

@@ -1,0 +1,44 @@
+{
+  "id": "lords-prayer",
+  "kind": "prayer",
+  "language": "pt",
+  "order": 1,
+  "title": "Pai Nosso",
+  "subtitle": "Mateus 6:9–13",
+  "tradition": "ecumenical",
+  "source": "Almeida Corrigida Fiel",
+  "license": "Conforme os termos da tradução",
+  "sections": [
+    {
+      "blocks": [
+        {
+          "type": "verse",
+          "lines": [
+            "Pai nosso, que estás nos céus,",
+            "santificado seja o teu nome;",
+            "venha o teu reino;",
+            "seja feita a tua vontade,",
+            "assim na terra como no céu;"
+          ]
+        },
+        {
+          "type": "verse",
+          "lines": [
+            "o pão nosso de cada dia nos dá hoje;",
+            "e perdoa-nos as nossas dívidas,",
+            "assim como nós perdoamos aos nossos devedores;",
+            "e não nos induzas à tentação;",
+            "mas livra-nos do mal;"
+          ]
+        },
+        {
+          "type": "verse",
+          "lines": [
+            "porque teu é o reino, e o poder, e a glória, para sempre.",
+            "Amém."
+          ]
+        }
+      ]
+    }
+  ]
+}

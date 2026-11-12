@@ -1,0 +1,21 @@
+{
+  "id": "ten-commandments",
+  "kind": "passage",
+  "language": "en",
+  "order": 1,
+  "title": "The Ten Commandments",
+  "subtitle": "The Decalogue",
+  "tradition": "ecumenical",
+  "source": "Scripture, in the active translation",
+  "license": "Per the Bible translation",
+  "sections": [
+    {
+      "title": "Exodus 20",
+      "blocks": [{ "type": "scripture", "reference": "EXO 20:1-17" }]
+    },
+    {
+      "title": "Deuteronomy 5",
+      "blocks": [{ "type": "scripture", "reference": "DEU 5:6-21" }]
+    }
+  ]
+}
