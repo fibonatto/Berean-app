@@ -1,10 +1,3 @@
-//
-//  VerseOfTheDayWidget.swift
-//  Berean
-//
-//  Created by Sergio Bonatto on 12/11/26.
-//
-
 import SwiftUI
 import WidgetKit
 
@@ -17,35 +10,38 @@ nonisolated struct VerseEntry: TimelineEntry {
 }
 
 nonisolated struct VerseProvider: TimelineProvider {
-    private static let fallback = VerseEntry(
+    private static let sample = VerseEntry(
         date: .now,
-        reference: "Berean",
-        text: "Open the app once to load the verse of the day.",
-        translation: "",
+        reference: "John 3:16",
+        text: "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.",
+        translation: "KJV",
         link: nil
     )
 
     func placeholder(in context: Context) -> VerseEntry {
-        VerseEntry(
-            date: .now,
-            reference: "John 3:16",
-            text: "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.",
-            translation: "KJV",
-            link: nil
-        )
+        Self.sample
     }
 
     func getSnapshot(in context: Context, completion: @escaping (VerseEntry) -> Void) {
-        completion(Self.entries().first ?? Self.fallback)
+        let snapshot = WidgetSnapshotStore.load()
+        let entry = Self.entries(from: snapshot).first
+            ?? (context.isPreview ? Self.sample : Self.fallback(for: snapshot))
+        completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<VerseEntry>) -> Void) {
-        let entries = Self.entries()
-        completion(Timeline(entries: entries.isEmpty ? [Self.fallback] : entries, policy: .atEnd))
+        let snapshot = WidgetSnapshotStore.load()
+        let entries = Self.entries(from: snapshot)
+        if entries.isEmpty {
+            let retry = Date().addingTimeInterval(15 * 60)
+            completion(Timeline(entries: [Self.fallback(for: snapshot)], policy: .after(retry)))
+        } else {
+            completion(Timeline(entries: entries, policy: .atEnd))
+        }
     }
 
-    private static func entries() -> [VerseEntry] {
-        guard let snapshot = WidgetSnapshotStore.load() else { return [] }
+    private static func entries(from snapshot: WidgetSnapshot?) -> [VerseEntry] {
+        guard let snapshot else { return [] }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
@@ -61,6 +57,18 @@ nonisolated struct VerseProvider: TimelineProvider {
                 link: URL(string: verse.link)
             )
         }
+    }
+
+    private static func fallback(for snapshot: WidgetSnapshot?) -> VerseEntry {
+        let message: String
+        if let snapshot {
+            message = snapshot.verses.isEmpty
+                ? "The app saved no verses yet. Reopen Berean."
+                : "The saved verses are outdated. Open Berean to refresh them."
+        } else {
+            message = "No widget data found. Check that App Groups is enabled on both targets, with the same group name."
+        }
+        return VerseEntry(date: .now, reference: "Berean", text: message, translation: "", link: nil)
     }
 }
 

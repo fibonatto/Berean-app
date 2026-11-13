@@ -13,6 +13,7 @@ struct BereanApp: App {
     @State private var store = BibleStore()
     @State private var search = SearchModel()
     @State private var library = LibraryStore()
+    @State private var plans = PlanStore()
 
     init() {
         Theme.configureNavigationBar()
@@ -20,13 +21,12 @@ struct BereanApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
                 .environment(store)
                 .environment(search)
                 .environment(library)
-                .tint(Theme.accent)
-                .preferredColorScheme(.light)
+                .environment(plans)
         }
-        .modelContainer(for: VerseMark.self)
+        .modelContainer(for: [VerseMark.self, PlanEnrollment.self])
     }
 }

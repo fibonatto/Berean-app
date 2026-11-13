@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftData
 import SwiftUI
 import UIKit
@@ -10,12 +11,17 @@ struct ReaderView: View {
     @AppStorage("readerFont") private var readerFont = ReaderFont.newYork
     @AppStorage("readerSpacing") private var spacing = ReaderSpacing.normal
     @AppStorage("readerMargin") private var margin = ReaderMargin.normal
+    @AppStorage("speechVoice") private var voiceID = ""
+    @AppStorage("speechRate") private var speechRate = 1.0
+    @AppStorage("speechAutoAdvance") private var autoAdvance = true
     @Query private var marks: [VerseMark]
     @State private var position: Position
     @State private var highlight: ClosedRange<Int>?
     @State private var selected: Set<Int> = []
     @State private var showsCopied = false
     @State private var showsSettings = false
+    @State private var speech = SpeechController()
+    @State private var noteTarget: NoteTarget?
 
     private let rowShape = RoundedRectangle(cornerRadius: 6)
 
@@ -70,6 +76,12 @@ struct ReaderView: View {
             }
             .id(position)
             .task(id: position) { await reveal(with: proxy) }
+            .onChange(of: speech.currentVerse) { _, verse in
+                guard let verse else { return }
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    proxy.scrollTo(verse, anchor: UnitPoint(x: 0.5, y: 0.35))
+                }
+            }
         }
         .background(Theme.paper)
         .font(readerFont.bodyFont)
@@ -89,49 +101,100 @@ struct ReaderView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Theme.paper)
         }
+        .sheet(item: $noteTarget) { target in
+            NoteEditorView(
+                title: "\(book?.name ?? "") \(position.chapter):\(target.verse)",
+                initialText: chapterMarks[target.verse]?.note ?? "",
+                onSave: { saveNote($0, verse: target.verse) }
+            )
+        }
         .simultaneousGesture(swipe)
         .onAppear { store.remember(position) }
+        .onDisappear { speech.stop() }
         .onChange(of: position) { _, newValue in store.remember(newValue) }
         .onChange(of: store.lastPosition) { _, newValue in
             if let newValue, newValue != position { go(to: newValue) }
         }
+        .onChange(of: speech.completions) { advanceAfterSpeech() }
+        .onChange(of: speechRate) { restartSpeech() }
     }
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
             if selected.isEmpty {
+                Button { toggleSpeech() } label: {
+                    Label(
+                        speech.isSpeaking ? "Stop reading" : "Read aloud",
+                        systemImage: speech.isSpeaking ? "speaker.slash.fill" : "speaker.wave.2"
+                    )
+                }
                 Button { showsSettings = true } label: {
-                    Label("Ajustes de leitura", systemImage: "textformat.size")
+                    Label("Reading settings", systemImage: "textformat.size")
                 }
             } else {
+                if selected.count == 1, let verse = selected.first {
+                    Button { noteTarget = NoteTarget(verse: verse) } label: {
+                        Label("Note", systemImage: "note.text.badge.plus")
+                    }
+                }
+                Button { startSpeech() } label: {
+                    Label("Read aloud from here", systemImage: "speaker.wave.2")
+                }
                 Button { selected = [] } label: {
-                    Label("Limpar seleção", systemImage: "xmark")
+                    Label("Clear selection", systemImage: "xmark")
                 }
             }
         }
         ToolbarItemGroup(placement: .bottomBar) {
-            if selected.isEmpty {
-                navigationButtons
-            } else {
+            if !selected.isEmpty {
                 selectionButtons
+            } else if speech.isSpeaking {
+                speechButtons
+            } else {
+                navigationButtons
             }
         }
     }
-
+    
     @ViewBuilder
     private var navigationButtons: some View {
         Button { go(to: previous) } label: {
-            Label("Capítulo anterior", systemImage: "chevron.left")
+            Label("Previous chapter", systemImage: "chevron.left")
         }
         .disabled(previous == nil)
         Spacer()
         TranslationMenu()
         Spacer()
         Button { go(to: next) } label: {
-            Label("Próximo capítulo", systemImage: "chevron.right")
+            Label("Next chapter", systemImage: "chevron.right")
         }
         .disabled(next == nil)
+    }
+
+    @ViewBuilder
+    private var speechButtons: some View {
+        Button { speech.togglePause() } label: {
+            Label(
+                speech.isPaused ? "Resume" : "Pause",
+                systemImage: speech.isPaused ? "play.fill" : "pause.fill"
+            )
+        }
+        Spacer()
+        Menu {
+            Picker("Speed", selection: $speechRate) {
+                ForEach(ReaderStyle.speechRates, id: \.self) {
+                    Text(ReaderStyle.speedLabel($0)).tag($0)
+                }
+            }
+        } label: {
+            Text(ReaderStyle.speedLabel(speechRate))
+                .font(Theme.serif(.subheadline, weight: .semibold))
+        }
+        Spacer()
+        Button { speech.stop() } label: {
+            Label("Stop reading", systemImage: "stop.fill")
+        }
     }
 
     @ViewBuilder
@@ -143,21 +206,21 @@ struct ReaderView: View {
                     .overlay { Circle().stroke(Theme.border, lineWidth: 1) }
                     .frame(width: 24, height: 24)
             }
-            .accessibilityLabel("Destacar em \(color.title.lowercased())")
+            .accessibilityLabel("Highlight in \(color.title.lowercased())")
         }
         Button { applyHighlight(nil) } label: {
-            Label("Remover destaque", systemImage: "circle.slash")
+            Label("Remove highlight", systemImage: "circle.slash")
         }
         Spacer()
         Button { toggleFavorite() } label: {
-            Label("Favoritar", systemImage: allFavorite ? "star.fill" : "star")
+            Label("Favorite", systemImage: allFavorite ? "star.fill" : "star")
         }
         Button { copySelection() } label: {
-            Label("Copiar", systemImage: "doc.on.doc")
+            Label("Copy", systemImage: "doc.on.doc")
         }
         if let text = selectionText {
             ShareLink(item: text) {
-                Label("Compartilhar", systemImage: "square.and.arrow.up")
+                Label("Share", systemImage: "square.and.arrow.up")
             }
         }
     }
@@ -165,7 +228,7 @@ struct ReaderView: View {
     @ViewBuilder
     private var copiedToast: some View {
         if showsCopied {
-            Text("Copiado")
+            Text("Copied")
                 .font(Theme.serif(.footnote, weight: .semibold))
                 .foregroundStyle(Theme.paper)
                 .padding(.horizontal, 14)
@@ -188,6 +251,7 @@ struct ReaderView: View {
 
     private func go(to target: Position?) {
         guard let target else { return }
+        speech.stop()
         highlight = nil
         selected = []
         position = target
@@ -197,6 +261,47 @@ struct ReaderView: View {
         guard let first = highlight?.lowerBound else { return }
         try? await Task.sleep(for: .milliseconds(150))
         proxy.scrollTo(first, anchor: UnitPoint(x: 0.5, y: 0.25))
+    }
+
+    private func toggleSpeech() {
+        if speech.isSpeaking {
+            speech.stop()
+        } else {
+            startSpeech()
+        }
+    }
+
+    private func startSpeech(from verse: Int? = nil) {
+        guard let book, let chapter else { return }
+        let first = verse ?? selected.min() ?? 0
+        let verses = chapter.verses
+            .filter { $0.verse >= first }
+            .map { SpokenVerse(number: $0.verse, text: $0.text) }
+        let word = store.translation.language == "pt" ? "capítulo" : "chapter"
+        let header = first == 0 ? "\(book.name), \(word) \(position.chapter)" : nil
+        selected = []
+        speech.start(
+            header: header,
+            verses: verses,
+            voice: SpeechVoices.resolve(
+                identifier: voiceID,
+                translationLanguage: store.translation.language
+            ),
+            rate: AVSpeechUtteranceDefaultSpeechRate * Float(speechRate)
+        )
+    }
+
+    private func restartSpeech() {
+        guard speech.isSpeaking else { return }
+        startSpeech(from: speech.currentVerse ?? 1)
+    }
+
+    private func advanceAfterSpeech() {
+        guard autoAdvance, let target = next else { return }
+        highlight = nil
+        selected = []
+        position = target
+        startSpeech()
     }
 
     private func toggle(_ verse: Int) {
@@ -228,13 +333,19 @@ struct ReaderView: View {
                 verse: verse
             )
             change(mark)
-            if mark.highlight == nil, !mark.isFavorite {
+            if mark.isEmpty {
                 if stored != nil { context.delete(mark) }
             } else if stored == nil {
                 context.insert(mark)
             }
         }
         try? context.save()
+    }
+
+    private func saveNote(_ text: String, verse: Int) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        update([verse]) { $0.note = trimmed.isEmpty ? nil : trimmed }
+        selected = []
     }
 
     private func copySelection() {
@@ -278,20 +389,39 @@ struct ReaderView: View {
     private func verseRow(_ verse: Verse, mark: VerseMark?) -> some View {
         let markColor = mark?.markColor
         let isTarget = highlight?.contains(verse.verse) == true
-        let fill = markColor?.color ?? (isTarget ? Theme.highlight : Color.clear)
-        return verseText(verse, onMark: markColor != nil, isFavorite: mark?.isFavorite == true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(fill, in: rowShape)
-            .overlay {
-                if selected.contains(verse.verse) {
-                    rowShape.stroke(Theme.accent, lineWidth: 1.5)
-                }
+        let isSpoken = speech.currentVerse == verse.verse
+        let fill = markColor?.color ?? ((isTarget || isSpoken) ? Theme.highlight : Color.clear)
+        return VStack(alignment: .leading, spacing: 6) {
+            verseText(verse, onMark: markColor != nil, isFavorite: mark?.isFavorite == true)
+            if let note = mark?.note, !note.isEmpty {
+                noteBlock(note)
             }
-            .contentShape(rowShape)
-            .onTapGesture { toggle(verse.verse) }
-            .id(verse.verse)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(fill, in: rowShape)
+        .overlay {
+            if selected.contains(verse.verse) {
+                rowShape.stroke(Theme.accent, lineWidth: 1.5)
+            }
+        }
+        .contentShape(rowShape)
+        .onTapGesture { toggle(verse.verse) }
+        .id(verse.verse)
+    }
+
+    private func noteBlock(_ note: String) -> some View {
+        Text(note)
+            .font(Theme.serif(.footnote))
+            .italic()
+            .foregroundStyle(Theme.inkSoft)
+            .padding(.leading, 10)
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(Theme.border)
+                    .frame(width: 2)
+            }
     }
 
     private func verseText(_ verse: Verse, onMark: Bool, isFavorite: Bool) -> Text {

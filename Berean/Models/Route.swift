@@ -16,3 +16,9 @@ nonisolated struct LibraryRoute: Hashable {}
 nonisolated struct DocumentRoute: Hashable {
     let id: String
 }
+
+nonisolated struct PlansRoute: Hashable {}
+
+nonisolated struct PlanRoute: Hashable {
+    let id: String
+}

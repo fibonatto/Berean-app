@@ -15,9 +15,9 @@ nonisolated enum MarkColor: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .yellow: "Amarelo"
-        case .green: "Verde"
-        case .rose: "Rosa"
+        case .yellow: "Yellow"
+        case .green: "Green"
+        case .rose: "Rose"
         }
     }
 }
@@ -30,10 +30,15 @@ final class VerseMark {
     var verse: Int
     var highlight: String?
     var isFavorite: Bool
+    var note: String?
     var createdAt: Date
 
     var markColor: MarkColor? {
         highlight.flatMap(MarkColor.init(rawValue:))
+    }
+
+    var isEmpty: Bool {
+        highlight == nil && !isFavorite && (note ?? "").isEmpty
     }
 
     init(bookKey: String, chapter: Int, verse: Int) {
@@ -43,6 +48,7 @@ final class VerseMark {
         self.verse = verse
         self.highlight = nil
         self.isFavorite = false
+        self.note = nil
         self.createdAt = .now
     }
 

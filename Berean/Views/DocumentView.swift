@@ -179,6 +179,7 @@ struct DocumentView: View {
             Text(document.title)
                 .font(Theme.serif(.title, weight: .semibold))
                 .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.verseNumber)
             if let subtitle = document.subtitle {
                 Text(subtitle)
                     .font(Theme.serif(.subheadline))

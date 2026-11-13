@@ -1,10 +1,4 @@
-//
-//  ReaderSettings.swift
-//  Berean
-//
-//  Created by Sergio Bonatto on 10/11/26.
-//
-
+import AVFoundation
 import SwiftUI
 
 enum ReaderFont: String, CaseIterable, Identifiable {
@@ -40,9 +34,9 @@ enum ReaderSpacing: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .compact: "Compacto"
+        case .compact: "Compact"
         case .normal: "Normal"
-        case .relaxed: "Amplo"
+        case .relaxed: "Relaxed"
         }
     }
 
@@ -62,9 +56,9 @@ enum ReaderMargin: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .narrow: "Estreita"
+        case .narrow: "Narrow"
         case .normal: "Normal"
-        case .wide: "Larga"
+        case .wide: "Wide"
         }
     }
 
@@ -79,30 +73,64 @@ enum ReaderMargin: Int, CaseIterable, Identifiable {
 
 enum ReaderStyle {
     static let sizeSteps = -3...6
+    static let speechRates = [0.75, 1.0, 1.25, 1.5]
 
     static func textSize(system: DynamicTypeSize, step: Int) -> DynamicTypeSize {
         let sizes = DynamicTypeSize.allCases
         let base = sizes.firstIndex(of: system) ?? 0
         return sizes[min(max(base + step, 0), sizes.count - 1)]
     }
+
+    static func speedLabel(_ value: Double) -> String {
+        String(format: "%g×", value)
+    }
 }
 
 struct ReaderSettingsView: View {
+    @Environment(BibleStore.self) private var store
     @Environment(\.dynamicTypeSize) private var systemTypeSize
     @AppStorage("readerSizeStep") private var sizeStep = 0
     @AppStorage("readerFont") private var readerFont = ReaderFont.newYork
     @AppStorage("readerSpacing") private var spacing = ReaderSpacing.normal
     @AppStorage("readerMargin") private var margin = ReaderMargin.normal
+    @AppStorage("speechVoice") private var voiceID = ""
+    @AppStorage("speechRate") private var speechRate = 1.0
+    @AppStorage("speechAutoAdvance") private var autoAdvance = true
 
     let sample: String
 
     private let previewShape = RoundedRectangle(cornerRadius: 8)
 
+    private var appearance: Binding<AppTheme> {
+        Binding(
+            get: { ThemeStore.shared.current },
+            set: { ThemeStore.shared.select($0) }
+        )
+    }
+
+    private var voices: [AVSpeechSynthesisVoice] {
+        SpeechVoices.available(for: store.translation.language)
+    }
+
+    private var voiceSelection: Binding<String> {
+        let available = voices
+        return Binding(
+            get: { available.contains { $0.identifier == voiceID } ? voiceID : "" },
+            set: { voiceID = $0 }
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 preview
-                section("Tamanho") {
+                section("Appearance") {
+                    Picker("Appearance", selection: appearance) {
+                        ForEach(AppTheme.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                section("Size") {
                     HStack(spacing: 12) {
                         Image(systemName: "textformat.size.smaller")
                         Slider(
@@ -117,31 +145,54 @@ struct ReaderSettingsView: View {
                     }
                     .foregroundStyle(Theme.inkSoft)
                 }
-                section("Fonte") {
-                    Picker("Fonte", selection: $readerFont) {
+                section("Font") {
+                    Picker("Font", selection: $readerFont) {
                         ForEach(ReaderFont.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.menu)
                     .labelsHidden()
                 }
-                section("Espaçamento entre linhas") {
-                    Picker("Espaçamento", selection: $spacing) {
+                section("Line spacing") {
+                    Picker("Spacing", selection: $spacing) {
                         ForEach(ReaderSpacing.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
                 }
-                section("Margens") {
-                    Picker("Margens", selection: $margin) {
+                section("Margins") {
+                    Picker("Margins", selection: $margin) {
                         ForEach(ReaderMargin.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
                 }
-                Button("Restaurar padrão", action: reset)
+                section("Read aloud") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Picker("Voice", selection: voiceSelection) {
+                            Text("Default").tag("")
+                            ForEach(voices, id: \.identifier) { voice in
+                                Text(Self.voiceTitle(voice)).tag(voice.identifier)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        Picker("Speed", selection: $speechRate) {
+                            ForEach(ReaderStyle.speechRates, id: \.self) {
+                                Text(ReaderStyle.speedLabel($0)).tag($0)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        Toggle("Continue to the next chapter", isOn: $autoAdvance)
+                        Text("Better voices: Settings → Accessibility → Spoken Content → Voices.")
+                            .font(Theme.serif(.footnote))
+                            .foregroundStyle(Theme.inkSoft)
+                    }
+                }
+                Button("Reset to defaults", action: reset)
                     .font(Theme.serif(.subheadline))
             }
             .padding(20)
         }
         .background(Theme.paper)
+        .presentationBackground(Theme.paper)
     }
 
     private var preview: some View {
@@ -170,10 +221,21 @@ struct ReaderSettingsView: View {
         }
     }
 
+    private static func voiceTitle(_ voice: AVSpeechSynthesisVoice) -> String {
+        switch voice.quality {
+        case .premium: "\(voice.name) (Premium)"
+        case .enhanced: "\(voice.name) (Enhanced)"
+        default: voice.name
+        }
+    }
+
     private func reset() {
         sizeStep = 0
         readerFont = .newYork
         spacing = .normal
         margin = .normal
+        voiceID = ""
+        speechRate = 1.0
+        autoAdvance = true
     }
 }

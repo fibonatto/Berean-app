@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var query = ""
     @State private var isSearching = false
     @State private var handledDeepLink = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -75,6 +76,12 @@ struct ContentView: View {
             .navigationDestination(for: DocumentRoute.self) { route in
                 DocumentView(documentID: route.id, onOpenReference: open)
             }
+            .navigationDestination(for: PlansRoute.self) { _ in
+                PlansView()
+            }
+            .navigationDestination(for: PlanRoute.self) { route in
+                PlanDetailView(planID: route.id, onOpenReference: open)
+            }
         }
         .onOpenURL { url in
             guard let reference = DeepLink.reference(from: url) else { return }
@@ -85,6 +92,9 @@ struct ContentView: View {
         .task {
             await store.load(store.translation)
             if !handledDeepLink { restoreLastPosition() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { WidgetSync.update(store: store) }
         }
     }
 
@@ -137,5 +147,6 @@ struct ContentView: View {
         .environment(BibleStore())
         .environment(SearchModel())
         .environment(LibraryStore())
-        .modelContainer(for: VerseMark.self, inMemory: true)
+        .environment(PlanStore())
+        .modelContainer(for: [VerseMark.self, PlanEnrollment.self], inMemory: true)
 }

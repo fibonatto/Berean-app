@@ -1,10 +1,3 @@
-//
-//  WidgetSync.swift
-//  Berean
-//
-//  Created by Sergio Bonatto on 12/11/26.
-//
-
 import Foundation
 import WidgetKit
 
@@ -24,6 +17,9 @@ enum WidgetSync {
             verses: verses,
             reading: reading(store: store, bible: bible)
         ))
+        #if DEBUG
+        print("[Widget] saved \(verses.count) verses for \(store.translation.title)")
+        #endif
         WidgetCenter.shared.reloadAllTimelines()
     }
 
@@ -31,8 +27,10 @@ enum WidgetSync {
         guard let bible = store.bible,
               let reading = reading(store: store, bible: bible)
         else { return }
-        var snapshot = WidgetSnapshotStore.load()
-            ?? WidgetSnapshot(translation: store.translation.title, verses: [], reading: nil)
+        guard var snapshot = WidgetSnapshotStore.load() else {
+            update(store: store)
+            return
+        }
         snapshot.reading = reading
         WidgetSnapshotStore.save(snapshot)
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")

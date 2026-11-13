@@ -1,14 +1,7 @@
-//
-//  WidgetSnapshot.swift
-//  Berean
-//
-//  Created by Sergio Bonatto on 12/11/26.
-//
-
 import Foundation
 
 nonisolated enum AppGroup {
-    static let identifier = "group.dev.fibonatto.berean"
+    static let identifier = "group.dev.fibonatto.Berean"
     static let snapshotFileName = "widget-snapshot.json"
 }
 
@@ -44,8 +37,20 @@ nonisolated enum WidgetSnapshotStore {
     }
 
     static func save(_ snapshot: WidgetSnapshot) {
-        guard let url = fileURL, let data = try? JSONEncoder().encode(snapshot) else { return }
-        try? data.write(to: url, options: .atomic)
+        guard let url = fileURL else {
+            #if DEBUG
+            print("[Widget] App Group container unavailable for \(AppGroup.identifier). Check the App Groups capability on both targets.")
+            #endif
+            return
+        }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            #if DEBUG
+            print("[Widget] Could not write snapshot: \(error)")
+            #endif
+        }
     }
 
     static func dayKey(for date: Date) -> String {
