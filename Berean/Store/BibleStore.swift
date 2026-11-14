@@ -10,11 +10,15 @@ final class BibleStore {
     private(set) var isLoading = false
     private(set) var error: String?
     private(set) var lastPosition: Position?
+    private(set) var recents: [Position] = []
 
     private enum Key {
         static let translation = "translation"
         static let position = "lastPosition"
+        static let recents = "recentPositions"
     }
+
+    private static let recentsLimit = 12
 
     init() {
         let defaults = UserDefaults.standard
@@ -22,6 +26,8 @@ final class BibleStore {
             .flatMap(Translation.init(rawValue:)) ?? .kjf
         lastPosition = defaults.data(forKey: Key.position)
             .flatMap { try? JSONDecoder().decode(Position.self, from: $0) }
+        recents = defaults.data(forKey: Key.recents)
+            .flatMap { try? JSONDecoder().decode([Position].self, from: $0) } ?? []
     }
 
     func select(_ translation: Translation) async {
@@ -54,7 +60,14 @@ final class BibleStore {
 
     func remember(_ position: Position) {
         lastPosition = position
-        UserDefaults.standard.set(try? JSONEncoder().encode(position), forKey: Key.position)
+        recents.removeAll { $0 == position }
+        recents.insert(position, at: 0)
+        if recents.count > Self.recentsLimit {
+            recents.removeLast(recents.count - Self.recentsLimit)
+        }
+        let defaults = UserDefaults.standard
+        defaults.set(try? JSONEncoder().encode(position), forKey: Key.position)
+        defaults.set(try? JSONEncoder().encode(recents), forKey: Key.recents)
         WidgetSync.updateReading(store: self)
     }
 

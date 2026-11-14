@@ -22,3 +22,5 @@ nonisolated struct PlansRoute: Hashable {}
 nonisolated struct PlanRoute: Hashable {
     let id: String
 }
+
+nonisolated struct BooksRoute: Hashable {}

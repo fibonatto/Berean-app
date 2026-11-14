@@ -14,6 +14,7 @@ struct BereanApp: App {
     @State private var search = SearchModel()
     @State private var library = LibraryStore()
     @State private var plans = PlanStore()
+    @State private var parallel = ParallelStore()
 
     init() {
         Theme.configureNavigationBar()
@@ -26,6 +27,7 @@ struct BereanApp: App {
                 .environment(search)
                 .environment(library)
                 .environment(plans)
+                .environment(parallel)
         }
         .modelContainer(for: [VerseMark.self, PlanEnrollment.self])
     }

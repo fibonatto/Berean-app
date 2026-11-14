@@ -3,7 +3,7 @@ import WidgetKit
 
 enum WidgetSync {
     private static let daysAhead = 30
-
+    
     static func update(store: BibleStore) {
         guard let bible = store.bible else { return }
         let calendar = Calendar.current
@@ -17,16 +17,16 @@ enum WidgetSync {
             verses: verses,
             reading: reading(store: store, bible: bible)
         ))
-        #if DEBUG
+#if DEBUG
         print("[Widget] saved \(verses.count) verses for \(store.translation.title)")
-        #endif
+#endif
         WidgetCenter.shared.reloadAllTimelines()
     }
-
+    
     static func updateReading(store: BibleStore) {
         guard let bible = store.bible,
               let reading = reading(store: store, bible: bible)
-        else { return }
+                else { return }
         guard var snapshot = WidgetSnapshotStore.load() else {
             update(store: store)
             return
@@ -35,7 +35,7 @@ enum WidgetSync {
         WidgetSnapshotStore.save(snapshot)
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
     }
-
+    
     private static func reading(store: BibleStore, bible: Bible) -> WidgetSnapshot.Reading? {
         guard let last = store.lastPosition, let book = bible.book(key: last.bookKey) else {
             return nil
@@ -47,26 +47,16 @@ enum WidgetSync {
             link: DeepLink.url(for: reference).absoluteString
         )
     }
-
+    
     private static func verse(on day: Date, store: BibleStore, bible: Bible) -> WidgetSnapshot.Verse? {
-        let index = Calendar.current.ordinality(of: .day, in: .era, for: day) ?? 0
-        let code = DailyVerses.references[index % DailyVerses.references.count]
-        guard let reference = store.references(matching: code).first,
-              let chapterNumber = reference.chapter,
-              let first = reference.verse,
-              let chapter = bible.book(key: reference.bookKey)?.chapter(chapterNumber)
-        else { return nil }
-        let last = max(first, reference.endVerse ?? first)
-        let text = chapter.verses
-            .filter { (first...last).contains($0.verse) }
-            .map(\.text)
-            .joined(separator: " ")
-        guard !text.isEmpty else { return nil }
+        guard let resolved = DailyVerseResolver.resolve(on: day, store: store, bible: bible) else {
+            return nil
+        }
         return WidgetSnapshot.Verse(
             day: WidgetSnapshotStore.dayKey(for: day),
-            reference: reference.title(in: bible),
-            text: text,
-            link: DeepLink.url(for: reference).absoluteString
+            reference: resolved.title,
+            text: resolved.text,
+            link: DeepLink.url(for: resolved.reference).absoluteString
         )
     }
 }

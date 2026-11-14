@@ -5,13 +5,6 @@ struct BookListView: View {
 
     var body: some View {
         List {
-            Section {
-                PlansHomeRow()
-                    .listRowBackground(Theme.paper)
-                    .listRowSeparatorTint(Theme.border)
-            } header: {
-                header("Reading")
-            }
             Section { rows(bible.oldTestament) } header: { header("Old Testament") }
             Section { rows(bible.newTestament) } header: { header("New Testament") }
         }

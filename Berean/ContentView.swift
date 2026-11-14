@@ -7,13 +7,15 @@ struct ContentView: View {
     @State private var query = ""
     @State private var isSearching = false
     @State private var handledDeepLink = false
+    @AppStorage("resumeOnLaunch") private var resumeOnLaunch = true
     @Environment(\.scenePhase) private var scenePhase
+    
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
                 if let bible = store.bible {
-                    BookListView(bible: bible)
+                    TodayView(bible: bible, onOpen: open)
                 } else if let error = store.error {
                     ContentUnavailableView(
                         "Could not load",
@@ -25,7 +27,7 @@ struct ContentView: View {
                 }
             }
             .background(Theme.paper)
-            .navigationTitle("Bible")
+            .navigationTitle("Today")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     NavigationLink(value: MarksRoute()) {
@@ -82,6 +84,13 @@ struct ContentView: View {
             .navigationDestination(for: PlanRoute.self) { route in
                 PlanDetailView(planID: route.id, onOpenReference: open)
             }
+            .navigationDestination(for: BooksRoute.self) { _ in
+                if let bible = store.bible {
+                    BookListView(bible: bible)
+                        .navigationTitle("Bible")
+                        .navigationBarTitleDisplayMode(.inline)
+                }
+            }
         }
         .onOpenURL { url in
             guard let reference = DeepLink.reference(from: url) else { return }
@@ -91,7 +100,7 @@ struct ContentView: View {
         }
         .task {
             await store.load(store.translation)
-            if !handledDeepLink { restoreLastPosition() }
+            if resumeOnLaunch && !handledDeepLink { restoreLastPosition() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { WidgetSync.update(store: store) }

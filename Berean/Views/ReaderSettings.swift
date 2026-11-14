@@ -71,6 +71,19 @@ enum ReaderMargin: Int, CaseIterable, Identifiable {
     }
 }
 
+enum ParallelLayout: String, CaseIterable, Identifiable {
+    case stacked, columns
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .stacked: "Stacked"
+        case .columns: "Columns"
+        }
+    }
+}
+
 enum ReaderStyle {
     static let sizeSteps = -3...6
     static let speechRates = [0.75, 1.0, 1.25, 1.5]
@@ -96,6 +109,10 @@ struct ReaderSettingsView: View {
     @AppStorage("speechVoice") private var voiceID = ""
     @AppStorage("speechRate") private var speechRate = 1.0
     @AppStorage("speechAutoAdvance") private var autoAdvance = true
+    @AppStorage("parallelEnabled") private var parallelEnabled = false
+    @AppStorage("parallelTranslation") private var parallelStored = ""
+    @AppStorage("parallelLayout") private var parallelLayout = ParallelLayout.stacked
+    @AppStorage("resumeOnLaunch") private var resumeOnLaunch = true
 
     let sample: String
 
@@ -117,6 +134,17 @@ struct ReaderSettingsView: View {
         return Binding(
             get: { available.contains { $0.identifier == voiceID } ? voiceID : "" },
             set: { voiceID = $0 }
+        )
+    }
+    
+    private var secondaryChoices: [Translation] {
+        Translation.allCases.filter { $0 != store.translation }
+    }
+
+    private var secondarySelection: Binding<String> {
+        Binding(
+            get: { ParallelChoice.resolve(stored: parallelStored, primary: store.translation).rawValue },
+            set: { parallelStored = $0 }
         )
     }
 
@@ -186,6 +214,27 @@ struct ReaderSettingsView: View {
                             .foregroundStyle(Theme.inkSoft)
                     }
                 }
+                section("Parallel reading") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("Show a second translation", isOn: $parallelEnabled)
+                        if parallelEnabled {
+                            Picker("Second translation", selection: secondarySelection) {
+                                ForEach(secondaryChoices) {
+                                    Text("\($0.title) · \($0.name)").tag($0.rawValue)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            Picker("Layout", selection: $parallelLayout) {
+                                ForEach(ParallelLayout.allCases) { Text($0.title).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
+                }
+                section("General") {
+                    Toggle("Reopen where I left off", isOn: $resumeOnLaunch)
+                }
                 Button("Reset to defaults", action: reset)
                     .font(Theme.serif(.subheadline))
             }
@@ -237,5 +286,9 @@ struct ReaderSettingsView: View {
         voiceID = ""
         speechRate = 1.0
         autoAdvance = true
+        parallelEnabled = false
+        parallelStored = ""
+        parallelLayout = .stacked
+        resumeOnLaunch = true
     }
 }

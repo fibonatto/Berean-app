@@ -5,6 +5,7 @@ import UIKit
 
 struct ReaderView: View {
     @Environment(BibleStore.self) private var store
+    @Environment(ParallelStore.self) private var parallel
     @Environment(\.modelContext) private var context
     @Environment(\.dynamicTypeSize) private var systemTypeSize
     @AppStorage("readerSizeStep") private var sizeStep = 0
@@ -14,6 +15,9 @@ struct ReaderView: View {
     @AppStorage("speechVoice") private var voiceID = ""
     @AppStorage("speechRate") private var speechRate = 1.0
     @AppStorage("speechAutoAdvance") private var autoAdvance = true
+    @AppStorage("parallelEnabled") private var parallelEnabled = false
+    @AppStorage("parallelTranslation") private var parallelStored = ""
+    @AppStorage("parallelLayout") private var parallelLayout = ParallelLayout.stacked
     @Query private var marks: [VerseMark]
     @State private var position: Position
     @State private var highlight: ClosedRange<Int>?
@@ -38,6 +42,14 @@ struct ReaderView: View {
     private var title: String {
         book.map { "\($0.name) \(position.chapter)" } ?? ""
     }
+
+    private var secondaryTranslation: Translation? {
+        parallelEnabled
+            ? ParallelChoice.resolve(stored: parallelStored, primary: store.translation)
+            : nil
+    }
+
+    private var secondaryTitle: String { secondaryTranslation?.title ?? "" }
 
     private var chapterMarks: [Int: VerseMark] {
         marks
@@ -117,6 +129,7 @@ struct ReaderView: View {
         }
         .onChange(of: speech.completions) { advanceAfterSpeech() }
         .onChange(of: speechRate) { restartSpeech() }
+        .task(id: secondaryTranslation) { await parallel.ensure(secondaryTranslation) }
     }
 
     @ToolbarContentBuilder
@@ -127,6 +140,12 @@ struct ReaderView: View {
                     Label(
                         speech.isSpeaking ? "Stop reading" : "Read aloud",
                         systemImage: speech.isSpeaking ? "speaker.slash.fill" : "speaker.wave.2"
+                    )
+                }
+                Button { parallelEnabled.toggle() } label: {
+                    Label(
+                        "Parallel reading",
+                        systemImage: parallelEnabled ? "rectangle.split.2x1.fill" : "rectangle.split.2x1"
                     )
                 }
                 Button { showsSettings = true } label: {
@@ -156,7 +175,7 @@ struct ReaderView: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private var navigationButtons: some View {
         Button { go(to: previous) } label: {
@@ -323,6 +342,12 @@ struct ReaderView: View {
         selected = []
     }
 
+    private func saveNote(_ text: String, verse: Int) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        update([verse]) { $0.note = trimmed.isEmpty ? nil : trimmed }
+        selected = []
+    }
+
     private func update(_ verses: Set<Int>, change: (VerseMark) -> Void) {
         let existing = chapterMarks
         for verse in verses {
@@ -340,12 +365,6 @@ struct ReaderView: View {
             }
         }
         try? context.save()
-    }
-
-    private func saveNote(_ text: String, verse: Int) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        update([verse]) { $0.note = trimmed.isEmpty ? nil : trimmed }
-        selected = []
     }
 
     private func copySelection() {
@@ -377,22 +396,65 @@ struct ReaderView: View {
         .padding(.bottom, 28)
     }
 
+    private var columnHeader: some View {
+        HStack(spacing: 14) {
+            Text(store.translation.title)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(secondaryTitle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(Theme.serif(.caption, weight: .semibold))
+        .tracking(1.5)
+        .foregroundStyle(Theme.inkSoft)
+        .padding(.horizontal, 6)
+        .padding(.bottom, 4)
+    }
+
+    private func secondaryTexts() -> [Int: String]? {
+        guard let translation = secondaryTranslation, parallel.translation == translation else {
+            return nil
+        }
+        guard let chapter = parallel.bible?.book(key: position.bookKey)?.chapter(position.chapter) else {
+            return [:]
+        }
+        return chapter.verses.reduce(into: [:]) { $0[$1.verse] = $1.text }
+    }
+
     private func verseList(_ chapter: Chapter) -> some View {
         let current = chapterMarks
+        let secondary = secondaryTexts()
         return LazyVStack(alignment: .leading, spacing: 6) {
+            if secondary != nil, parallelLayout == .columns {
+                columnHeader
+            }
             ForEach(chapter.verses, id: \.verse) { verse in
-                verseRow(verse, mark: current[verse.verse])
+                verseRow(verse, mark: current[verse.verse], secondary: secondary)
             }
         }
     }
 
-    private func verseRow(_ verse: Verse, mark: VerseMark?) -> some View {
+    private func verseRow(_ verse: Verse, mark: VerseMark?, secondary: [Int: String]?) -> some View {
         let markColor = mark?.markColor
         let isTarget = highlight?.contains(verse.verse) == true
         let isSpoken = speech.currentVerse == verse.verse
         let fill = markColor?.color ?? ((isTarget || isSpoken) ? Theme.highlight : Color.clear)
+        let primary = verseText(verse, onMark: markColor != nil, isFavorite: mark?.isFavorite == true)
         return VStack(alignment: .leading, spacing: 6) {
-            verseText(verse, onMark: markColor != nil, isFavorite: mark?.isFavorite == true)
+            if let secondary, parallelLayout == .columns {
+                HStack(alignment: .top, spacing: 14) {
+                    primary
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(secondary[verse.verse] ?? "—")
+                        .font(Theme.serif(.callout))
+                        .foregroundStyle(Theme.inkSoft)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                primary
+                if let secondary {
+                    stackedSecondary(secondary[verse.verse])
+                }
+            }
             if let note = mark?.note, !note.isEmpty {
                 noteBlock(note)
             }
@@ -409,6 +471,21 @@ struct ReaderView: View {
         .contentShape(rowShape)
         .onTapGesture { toggle(verse.verse) }
         .id(verse.verse)
+    }
+
+    private func stackedSecondary(_ text: String?) -> some View {
+        let tag = Text(secondaryTitle)
+            .font(Theme.serif(.caption2, weight: .semibold))
+            .foregroundStyle(Theme.accent)
+        return Text("\(tag)  \(text ?? "—")")
+            .font(Theme.serif(.callout))
+            .foregroundStyle(Theme.inkSoft)
+            .padding(.leading, 10)
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(Theme.border)
+                    .frame(width: 2)
+            }
     }
 
     private func noteBlock(_ note: String) -> some View {
